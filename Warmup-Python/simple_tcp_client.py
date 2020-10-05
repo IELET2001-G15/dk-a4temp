@@ -92,7 +92,7 @@ def read_response_from_server():
 
     response = None
     try:
-        response = client_socket.recv(1024).rstrip()
+        response = client_socket.recv(10).decode().rstrip()
     except IOError as e:
         print("Error happened: ", e)
 
