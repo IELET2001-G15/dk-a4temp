@@ -6,8 +6,8 @@ import time
 from socket import *
 
 # Hostname of the server and TCP port number to use
-HOST = "datakomm.work"
-PORT = 1301
+HOST = "localhost"
+PORT = 13001
 
 # The socket object (connection to the server and data excahgne will happen using this variable)
 client_socket = None
