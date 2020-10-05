@@ -27,14 +27,16 @@ def run_server():
 
 
 def handle_next_client(connection_socket, client_id):
-    try:
-        equation = connection_socket.recv(10).decode().rstrip()
-        first_num, second_num = equation.split('+')
-        answer = str(int(first_num) + int(second_num)) + '\n'
-        connection_socket.send(answer.encode())
-    except IOError as e:
-        print("Error happened: ", e)
-        connection_socket.send("error".encode())
+    equation = "+"
+    while equation is not "":
+        try:
+            equation = connection_socket.recv(10).decode().rstrip()
+            first_num, second_num = equation.split('+')
+            answer = str(int(first_num) + int(second_num)) + '\n'
+            connection_socket.send(answer.encode())
+        except ValueError as e:
+            print("Error happened: ", e)
+            connection_socket.send("error".encode())
 
 
 

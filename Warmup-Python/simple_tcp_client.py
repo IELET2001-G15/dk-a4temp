@@ -95,6 +95,7 @@ def read_response_from_server():
         response = client_socket.recv(10).decode().rstrip()
     except IOError as e:
         print("Error happened: ", e)
+        response = None
 
     return response
 
@@ -112,6 +113,7 @@ def run_client_tests():
     a = random.randint(1, 20)
     b = random.randint(1, 20)
     request = str(a) + "+" + str(b)
+    response = 26
 
     if not send_request_to_server(request):
         return "ERROR: Failed to send valid message to server!"
@@ -120,11 +122,11 @@ def run_client_tests():
     response = read_response_from_server()
     if response is None:
         return "ERROR: Failed to receive server's response!"
-
+        
     print("Server responded with: ", response)
     seconds_to_sleep = 2 + random.randint(0, 5)
     print("Sleeping %i seconds to allow simulate long client-server connection..." % seconds_to_sleep)
-    time.sleep(seconds_to_sleep * 1000)
+    time.sleep(seconds_to_sleep)
 
     request = "bla+bla"
     if not send_request_to_server(request):
