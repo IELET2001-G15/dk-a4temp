@@ -33,7 +33,14 @@ def connect_to_server(host, port):
     # except IOError as e:
     #     print("Error happened:", e)
     #     what_to_do_in_case_of_error()
-    return False
+    no_error = True
+    try:
+        client_socket.connect((host, port))
+    except IOError as e:
+        print("Error happened: ", e)
+        no_error = False
+
+    return no_error
 
 
 def close_connection():
@@ -45,7 +52,14 @@ def close_connection():
     global client_socket
 
     # TODO - implement this method
-    return False
+    no_error = True
+    try:
+        client_socket.close()
+    except IOError as e:
+        print("Error happened: ", e)
+        no_error = False
+
+    return no_error
 
 
 def send_request_to_server(request):
@@ -57,7 +71,14 @@ def send_request_to_server(request):
     global client_socket
 
     # TODO - implement this method
-    return False
+    no_error = True
+    try:
+        client_socket.send(request.encode())
+    except IOError as e:
+        print("Error happened: ", e)
+        no_error = False
+
+    return no_error
 
 
 def read_response_from_server():
@@ -69,7 +90,13 @@ def read_response_from_server():
     # The "global" keyword is needed so that this function refers to the globally defined client_socket variable
     global client_socket
 
-    return None
+    response = None
+    try:
+        response = client_socket.recv(1024).rstrip()
+    except IOError as e:
+        print("Error happened: ", e)
+
+    return response
 
 
 def run_client_tests():
