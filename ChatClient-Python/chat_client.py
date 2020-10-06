@@ -87,6 +87,15 @@ def connect_to_server():
 
     # TODO Step 1: implement connection establishment
     # Hint: create a socket, connect, handle exceptions, then change current_state accordingly
+    client_socket = socket(AF_INET, SOCK_STREAM)
+
+    try:
+        client_socket.connect((SERVER_HOST, TCP_PORT))
+    except IOError as e:
+        print(e)
+        current_state = "disconnected"
+
+    current_state = "connected"
 
     # TODO Step 3: switch to sync mode
     # Hint: send the sync command according to the protocol
