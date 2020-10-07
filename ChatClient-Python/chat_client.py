@@ -15,7 +15,7 @@ states = [
     "authorized"  # Connected and authorized (logged in)
 ]
 TCP_PORT = 1300  # TCP port used for communication
-SERVER_HOST = "localhost"  # Set this to either hostname (domain) or IP address of the chat server
+SERVER_HOST = "datakomm.work"  # Set this to either hostname (domain) or IP address of the chat server
 
 # --------------------
 # State variables
@@ -30,13 +30,11 @@ client_socket = None  # type: socket
 
 def quit_application():
     """ Update the application state so that the main-loop will exit """
-    # Make sure we reference the global variable here. Not the best code style,
-    # but the easiest to work with without involving object-oriented code
     global must_run
     must_run = False
 
 
-def send_command(command, arguments):
+def send_command(command, arguments=None):
     """
     Send one command to the chat server.
     :param command: The command to send (login, sync, msg, ...(
@@ -45,10 +43,14 @@ def send_command(command, arguments):
     :return:
     """
     global client_socket
-    # TODO: Implement this (part of step 3)
-    # Hint: concatenate the command and the arguments
-    # Hint: remember to send the newline at the end
-    pass
+    if arguments is not None:
+        command += ' ' + arguments + '\n'
+    else:
+        command += '\n'
+    try:
+        client_socket.send(command.encode())
+    except IOError as e:
+        print(e)
 
 
 def read_one_line(sock):
@@ -75,48 +77,124 @@ def get_servers_response():
     Wait until a response command is received from the server
     :return: The response of the server, the whole line as a single string
     """
-    # TODO Step 4: implement this function
-    # Hint: reuse read_one_line (copied from the tutorial-code)
-    return None
+    global client_socket
+    valid_responses = ["loginok", "loginerr", "modeok", "msgok", "msgerr", "inbox", "supported", "cmderr", "users", "joke"]
+    response = read_one_line(client_socket)
+    while response.split()[0] not in valid_responses:
+        response = read_one_line(client_socket)
+
+    return response
 
 
 def connect_to_server():
-    # Must have these two lines, otherwise the function will not "see" the global variables that we will change here
+    """
+    Opens socket, connects to server, changes state to connected and enters synchronized mode
+    """
     global client_socket
     global current_state
-
-    # TODO Step 1: implement connection establishment
-    # Hint: create a socket, connect, handle exceptions, then change current_state accordingly
     client_socket = socket(AF_INET, SOCK_STREAM)
-
     try:
         client_socket.connect((SERVER_HOST, TCP_PORT))
     except IOError as e:
         print(e)
-        current_state = "disconnected"
-
+        return
     current_state = "connected"
-
-    # TODO Step 3: switch to sync mode
-    # Hint: send the sync command according to the protocol
-    # Hint: create function send_command(command, arguments) which you will use to send this and all other commands
-    # to the server
-
-    # TODO Step 4: wait for the servers response and find out whether the switch to SYNC mode was successful
-    # Hint: implement the get_servers_response function first - it should wait for one response command from the server
-    # and return the server's response (we expect "modeok" response here). This get_servers_response() function
-    # will come in handy later as well - when we will want to check the server's response to login, messages etc
-    print("CONNECTION NOT IMPLEMENTED!")
+    send_command("sync")
+    if "modeok" not in get_servers_response():
+        print("ERROR: NOT IN SYNC MODE")
 
 
 def disconnect_from_server():
-    # TODO Step 2: Implement disconnect
-    # Hint: close the socket, handle exceptions, update current_state accordingly
-
-    # Must have these two lines, otherwise the function will not "see" the global variables that we will change here
+    """
+    Closes socket and changes state to disconnected
+    """
     global client_socket
     global current_state
-    pass
+    try:  
+        client_socket.close()
+    except IOError as e:
+        print(e)
+        return
+    current_state = "disconnected"
+
+
+def login():
+    """
+    Logs in user and changes state to authorized
+    """
+    global current_state
+    username = input("Enter username: ")
+    send_command("login", username)
+    response = get_servers_response()
+    if "loginerr" in response:
+        print(response)
+    else:
+        current_state = "authorized"
+
+
+def send_public_message():
+    """
+    Sends a public message
+    """
+    message = input("Enter public message: ")
+    send_command("msg", message)
+    response = get_servers_response()
+    if "msgerr" in response:
+        print(response)
+
+
+def send_private_message():
+    """
+    Sends a private message
+    """
+    recipient = input("Enter recipient: ")
+    message = input("Enter message: ")
+    send_command("msg", recipient + ' ' + message)
+    response = get_servers_response()
+    if "msgerr" in response:
+        print(response)
+
+
+def get_user_list():
+    """
+    Fetches available users from server
+    """
+    send_command("users")
+    response = get_servers_response()
+    if "users" in response:
+        print(response.replace("users", "Users:"))
+    else:
+        print("ERROR: COULD NOT FETCH USERS")
+
+
+def read_inbox():
+    """
+    Fetches unread messages from server
+    """
+    global client_socket
+    send_command("inbox")
+    number_of_messages = int(read_one_line(client_socket).strip("inbox\n"))
+    public_messages = []
+    print("Unread messages:", number_of_messages)
+    print("----------------\nPrivate messages\n----------------")
+    for i in range(number_of_messages):
+        message = read_one_line(client_socket)
+        if "privmsg" in message:
+            print(message.replace("privmsg ", ""))
+        else:
+            public_messages.append(message.replace("msg ", ""))
+    print("---------------\nPublic messages\n---------------")
+    for message in public_messages: print(message)
+
+
+def get_joke():
+    """
+    Fetches random joke from server
+    """
+    send_command("joke")
+    response = get_servers_response()
+    print(response)
+
 
 
 """
@@ -141,61 +219,32 @@ available_actions = [
     {
         "description": "Authorize (log in)",
         "valid_states": ["connected", "authorized"],
-        # TODO Step 5 - implement login
-        # Hint: you will probably want to create a new function (call it login(), or authorize()) and
-        # reference that function here.
-        # Hint: you can ask the user to enter the username with input("Enter username: ") function.
-        # Hint: the login function must be above this line, otherwise the available_actions will complain that it can't
-        # find the function
-        # Hint: you can reuse the send_command() function to send the "login" command
-        # Hint: you probably want to change the state of the system: update value of current_state variable
-        # Hint: remember to tell the function that you will want to use the global variable "current_state".
-        # Hint: if the login was unsuccessful (loginerr returned), show the error message to the user
-        "function": None
+        "function": login
     },
     {
         "description": "Send a public message",
         "valid_states": ["connected", "authorized"],
-        # TODO Step 6 - implement sending a public message
-        # Hint: ask the user to input the message from the keyboard
-        # Hint: you can reuse the send_command() function to send the "msg" command
-        # Hint: remember to read the server's response: whether the message was successfully sent or not
-        "function": None
+        "function": send_public_message
     },
     {
         "description": "Send a private message",
         "valid_states": ["authorized"],
-        # TODO Step 8 - implement sending a private message
-        # Hint: ask the user to input the recipient and message from the keyboard
-        # Hint: you can reuse the send_command() function to send the "privmsg" command
-        # Hint: remember to read the server's response: whether the message was successfully sent or not
-        "function": None
+        "function": send_private_message
     },
     {
         "description": "Read messages in the inbox",
         "valid_states": ["connected", "authorized"],
-        # TODO Step 9 - implement reading messages from the inbox.
-        # Hint: send the inbox command, find out how many messages there are. Then parse messages
-        # one by one: find if it is a private or public message, who is the sender. Print this
-        # information in a user friendly way
-        "function": None
+        "function": read_inbox
     },
     {
         "description": "See list of users",
         "valid_states": ["connected", "authorized"],
-        # TODO Step 7 - Implement getting the list of currently connected users
-        # Hint: use the provided chat client tools and analyze traffic with Wireshark to find out how
-        # the user list is reported. Then implement a function which gets the user list from the server
-        # and prints the list of usernames
-        "function": None
+        "function": get_user_list
     },
     {
         "description": "Get a joke",
         "valid_states": ["connected", "authorized"],
-        # TODO - optional step - implement the joke fetching from the server.
-        # Hint: this part is not described in the protocol. But the command is simple. Try to find
-        # out how it works ;)
-        "function": None
+        "function": get_joke
     },
     {
         "description": "Quit the application",
